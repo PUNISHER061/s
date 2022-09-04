@@ -1,596 +1,429 @@
-const Discord = require("discord.js");
-const { MessageEmbed } = require("discord.js");
-const { Collection, Client } = require("discord.js");
-const { token, default_prefix } = require("./config.json");
-const config = require("./config.json");
-const colors = require("./colors.json");
-const { red, green, blue} = require('chalk');
-const { readdirSync } = require("fs");
-const fs = require("fs");
-const { join, format } = require("path");
-const db = require("quick.db");
+const express = require('express')
+const app = express();
+const port = 3000
+
+app.get('/', (req, res) => res.send('bot online yay boy!!'))
+
+app.listen(port, () =>
+console.log(`Your app is listening a http://localhost:${port}`)
+);
+require("dotenv").config();
+
+
+"$TOEKN"
+// if you need help ask in the help channel dont dm me
+const guildDB = require("./mongo/guildDB");
+const { default_prefix } = require("./config.json")
+const fetch = require("node-fetch");
+const db =require("quick.db");
+const moment = require("moment");
 const { CanvasSenpai } = require("canvas-senpai")
 const canva = new CanvasSenpai();
-const pagination = require("discord.js-pagination");
-const yts = require('yt-search');
-const ultrax = require("ultrax");
-const { Player } = require("discord-music-player");
-const activities = [
-  "https://devevilbot.xyz",
-  "Default Prefix : de!",
-  "Server : https://discord.gg/jsQ9UP7kCA",
-  "🐢",
-];
-
-
-const client = new Discord.Client({ disableEveryone: true , fetchAllMembers: true});
-
-process.on('unhandledRejection', console.error);
+const { emotes , emoji} =require("./config.json")
+const { MessageMenuOption, MessageMenu } = require("discord-buttons")
+const DiscordButtons = require('discord-buttons'); 
+const { MessageEmbed } = require('discord.js')
+const discord = require("discord.js");
+const client = new discord.Client({
+  disableEveryone: false
+});
+const button = require('discord-buttons');
+const disbut = require("discord-buttons")
+const colors = require('./colors.json')
+const yts = require('yt-search')
 
 client.queue = new Map();
 client.vote = new Map();
+const { ready } = require("./handlers/ready.js")
 
+require("./database.js");
+client.commands = new discord.Collection();
+client.aliases = new discord.Collection();
+
+["command"].forEach(handler => {
+  require(`./handlers/${handler}`)(client);
+});
+client.queue = new Map()
+process.on('unhandledRejection', console.error);
+
+  
+client.on("message", async message => {
+
+  const prefixMention = new RegExp(`^<@!?${client.user.id}>( |)$`);
+  if (message.content.match(prefixMention)) {
+    return message.reply(`My prefix is \`${default_prefix}\``);
+  }
+ 
+
+  if (message.author.bot) return;
+  if (!message.guild) return;
+  if (!message.content.startsWith(default_prefix)) return;
+
+  if (!message.member)
+    message.member = message.guild.fetchMember(message);
+
+  const args = message.content
+    .slice(default_prefix.length)
+    .trim()
+    .split(/ +/g);
+  const cmd = args.shift().toLowerCase();
+
+  if (cmd.length === 0) return;
+
+  let command = client.commands.get(cmd);
+
+  if (!command) command = client.commands.get(client.aliases.get(cmd));
+
+  if (command) command.run(client, message, args);
+});
+
+
+/*client.on("guildMemberAdd", async member => {
+  try {
+
+  let chx = db.get(`welchannel_${member.guild.id}`);
+
+  if (chx === null) {
+
+    return;
+
+  }
+ let data = await canva.welcome(member, { link: "https://cdn.discordapp.com/attachments/815889737750544405/827575020338675822/welcome_imgae.png",blur: false }) 
+   const attachment = new discord.MessageAttachment(
+
+      data,
+
+      "welcome-image.png"
+
+    );
+ client.channels.cache.get(chx).send(`Welcome to ${member.guild.name}, Server ${member.user}\nYou are our ${member.guild.memberCount}th Member. Enjoy `, attachment);*/
+
+client.on("guildMemberAdd", async (member) => {
+  try {
+     console.log('test')
+    let data = await guildDB.find({ guild: member.guild.id });
+    var channel = data.map((guildDB) => {
+        return [ `${guildDB.channel}` ]})
+        console.log(channel)
+    if (!channel) return console.log('no channel')
+    // i think i almost got it right
+    console.log('test')
+    let message = data.map((guilDB) => { return [ `${guildDB.message}` ]});
+    console.log('test')
+    if (!message) message = "[member:mention] Welcome to [guild:name]";
+    console.log(channel)
+    console.log(message)
+    //let mes = message.replace(/`?\[member:mention]`?/g, member.user).replace(/`?\[guild:name]`?/g, member.guild.name).replace(/`?\[guild:membercount]`?/g, member.guild.members.cache.size)
+    let guildCh = client.guilds.cache.get(member.guild.id)
+    let f = await guildCh.channels.cache.get(channel).send(message);
+    console.log(f)
+    setTimeout(async () => {
+      await f.delete();
+    }, 1000);
+  client.channels.cache.get(chx).send("Welcome to our Server " + member.user.username, attachment);
+  } catch (e) {
+    console.log(e)
+  }
+});
+
+  client.on("guildMemberAdd", async (member) => {
+      let LoggingChannel = await db.get(`LoggingChannel_${member.guild.id}`);
+  if (!LoggingChannel)return console.log(`Setup Is Not Done in ${member.guild.id} aka ${member.guild.name} Guild (channel not found)`);
+
+  //getting notify role
+  let notifyRole = await db.get(`notifyRole_${member.guild.id}`);
+  if (!notifyRole)return console.log(`Setup Is Not Done in ${member.guild.id} aka ${member.guild.name} Guild (role not found)`);
+
+  //to get created date in days format
+  let x = Date.now() - member.user.createdAt;
+  let created = Math.floor(x / 86400000);
+
+  //creation date
+  let creationDate = moment
+    .utc(member.user.createdAt)
+    .format("dddd, MMMM Do YYYY, HH:mm:ss");
+
+  //joindate
+  let joiningDate = moment
+    .utc(member.joinedAt)
+    .format("dddd, MMMM Do YYYY, HH:mm:ss");
+
+  //joinposition
+  let joinPosition = member.guild.memberCount
+
+  //altdate
+  let AltAge = await db.get(`altAge_${member.guild.id}`)
+  if (!AltAge) return db.set(`altAge_${member.guild.id}`, 31)
+
+  //only sends message when alt found
+  if (created < AltAge) {
+    //embed
+    let altEmbed = //main alt message
+    new Discord.MessageEmbed().setTitle("Alt Found!").setColor("RANDOM").setFooter("Bot Made By ItzCutePihcu#0001")
+      .setDescription(`
+**__Alt Name__**: ${member.user} (${member.user.username})
+**__ID__**: ${member.user.id}
+**__Account Created__**: ${created} days ago
+**__Account Creation Date__**: ${creationDate}
+**__Join Position__**: ${joinPosition}
+**__Join Date__**: ${joiningDate}
+`);
+
+member.guild.channels.cache.get(LoggingChannel).send(`__Notification:__ <@&${notifyRole}>`, altEmbed);
+
+
+let AutoKick = await db.fetch(`AutoKick_${member.guild.id}`);
+if (!AutoKick)return console.log(`Setup Is Not Done in ${member.guild.id} aka ${member.guild.name} Guild (AutoKick Isn't Enabled)`);
+
+let AutoKickAge = await db.get(`AutokickAge_${member.guild.id}`)
+if (!AutoKickAge) return db.set(`AutokickAge_${member.guild.id}`, 8)
+
+  if (AutoKick === true) {
+
+ let checking = await db.get(`WhiteListed_${member.guild.id}`)
+
+  if (checking === member.user.id) {
+   let embed = new Discord.MessageEmbed()
+   .setTitle(`Auto Kick System Stucked On`)
+   .setDescription(`
+**__NAME__** - ${member.user} (${member.user.username})
+**__KICKED__** - NO
+**__REASON__** - WhiteListed User`)
+.setColor("RANDM");
+member.guild.channels.cache.get(LoggingChannel).send(embed)
+
+  } else {
+
+    if (created < AutoKickAge) {
+    let embed = new Discord.MessageEmbed()
+    .setTitle(`Auto Kick System Kicked SomeOne`)
+    .setDescription(`
+**__NAME__** - ${member.user} (${member.user.username})
+**__ID__** - ${member.user.id}
+**__KICKED FROM GUILD NAME__** - ${member.guild.name}
+**__KICKED REASON__** - ALT ( Created ${created} Days Ago)
+`)
+    .setColor('RANDOM')
+      member.kick()
+      console.log(`kicked`)
+      member.guild.channels.cache.get(LoggingChannel).send(embed)
+
+  } 
+}
+
+  } else {
+    console.log(`Autokick Isnt Disabled in ${memeber.guild.name}`)
+
+  }
+
+   }
+  }
+  )
+
+
+
+
+
+client.on("message", async message => {
+if (message.channel.name == "chatbot") {
+if (message.author.bot) return;
+message.content = message.content.replace(/@(everyone)/gi, "everyone").replace(/@(here)/gi, "here");
+if (message.content.includes(`@`)) {
+return message.channel.send(`**:x: Please dont mention anyone**`);
+ }
+  message.channel.startTyping();
+if (!message.content) return message.channel.send("Please say something.");
+fetch(`https://api.affiliateplus.xyz/api/chatbot?message=${encodeURIComponent(message.content)}&botname=${client.user.username}&ownername=npg`)
+    .then(res => res.json())
+    .then(data => {
+        message.channel.send(`> ${message.content} \n <@${message.author.id}> ${data.message}`);
+    });
+      message.channel.stopTyping();
+}
+});
+
+client.snipes = new Map()
+client.on('messageDelete', function(message, channel){
+  
+  client.snipes.set(message.channel.id, {
+    content:message.content,
+    author:message.author.tag,
+    image:message.attachments.first() ? message.attachments.first().proxyURL : null
+  })
+  
+})
+ 
+
+const { GiveawaysManager } = require("discord-giveaways");
+const manager = new GiveawaysManager(client, {
+    storage: "./handlers/giveaways.json",
+    updateCountdownEvery: 10000,
+    default: {
+        botsCanWin: false,
+        exemptPermissions: [ "MANAGE_MESSAGES", "ADMINISTRATOR" ],
+        embedColor: "#FF0000",
+        reaction: "🎉"
+    }
+});
+
+client.giveawaysManager = manager;
+
+client.on("message", async message => {
+if(!message.guild) return;
+  let prefix = db.get(`default_prefix${message.guild.id}`)
+  if(prefix === null) prefix =default_prefix;
+  
+  if(!message.content.startsWith(default_prefix)) return;
+ 
+})
+client.on("ready", () => {
+    client.user.setStatus("online");
+    console.log("Bot is working!!")
+});
+
+client.on
+client.on("ready", () => {
+     client.user.setActivity((client.guilds.cache.size) + " servers", { type: "WATCHING"})
+})
+const { Player } = require("discord-music-player");
 const player = new Player(client, {
-  leaveOnEnd: false,
-  leaveOnStop: false,
-  leaveOnEmpty: false,
-  deafenOnJoin: true,
-  timeout: 10,
-  volume: 150,
-  quality: 'high',
+    leaveOnEmpty: false,
 });
 
 client.player = player;
 
-client.on("ready", () => {
-  const guild = client.guilds.cache.size.toLocaleString();
-  const user = client.users.cache.size.toLocaleString();
-  const channel = client.channels.cache.size.toLocaleString();
-
-  let readychannel = client.channels.cache.get("844621375477907526");
-  const ready = new Discord.MessageEmbed()
-    .setTitle("I'm Online")
-    .setThumbnail(
-      client.user.displayAvatarURL({ format: "png", dynamic: true, size: 1024 })
-    )
-    .setDescription(
-      `<a:yes:784463701305458708> **Serving ${user} users in ${guild} servers and ${channel} channels**`
-    )
-    .setColor(colors.main)
-    .setFooter(
-      `${client.user.username}`,
-      client.user.displayAvatarURL({ format: "png", dynamic: true, size: 1024 })
-    );
-  readychannel.send(ready);
-
-  const DevEvil = String.raw`
-
-
-
-
-  _____             ______     _ _ ____        _   
- |  __ \           |  ____|   (_) |  _ \      | |  
- | |  | | _____   _| |____   ___| | |_) | ___ | |_ 
- | |  | |/ _ \ \ / /  __\ \ / / | |  _ < / _ \| __|
- | |__| |  __/\ V /| |___\ V /| | | |_) | (_) | |_ 
- |_____/ \___| \_/ |______\_/ |_|_|____/ \___/ \__|
-                                                   
-                                                   
-      DevEvilBot.xyz is online               
-      Developer: DevEvil#8745
-
-`;
-
-console.log(blue(DevEvil));
-  setInterval(() => {
-    const randomIndex = Math.floor(Math.random() * (activities.length - 1) + 1);
-    const newActivity = activities[randomIndex];
-
-    client.user.setActivity(newActivity);
-  }, 10000);
+new Player(client, {
+    leaveOnEnd: true,
+    leaveOnStop: true,
+    leaveOnEmpty: true,
+    timeout: 10,
+    volume: 150,
+    quality: 'high',
 });
+const fs = require('fs')
 
-client.on('error', console.error)
-client.on('warn', console.warn)
 
-process.on('unhandledRejection', (error) => {
-    console.error(`Uncaught Promise Error: \n${error.stack}`)
-})
+ client.on('guildCreate', guild =>{
 
-process.on('uncaughtException', (err) => {
-    let errmsg = (err ? err.stack || err : '').toString().replace(new RegExp(`${__dirname}/`, 'g'), './')
-    console.error(errmsg)
-})
+    const channelId = '1008857674831630458'; //put your channel ID here
 
-client.on("guildCreate", (guild) => {
-  const channel = guild.channels.cache.find(
-    (channel) =>
-      channel.type === "text" &&
-      channel.permissionsFor(guild.me).has("SEND_MESSAGES")
-  );
-  const joinembed = new Discord.MessageEmbed()
-    .setAuthor("Hello, I'm DevEvilBot.xyz", client.user.displayAvatarURL())
-    .setDescription(
-      "**Thank you for inviting me to your server :grin: :heart:** \n**Mention me for help or type ``de!help``** \n**Join our server for news of bot updates by typing ``de!server``** \n**Your server prefix: ``de!``** \n**You can support me by your upvotes ``de!upvote``** \n**You can change the bot prefix by typing ``de!prefix``**"
-    )
-    .setThumbnail(
-      client.user.displayAvatarURL({ format: "png", dynamic: true, size: 1024 })
-    )
-    .setColor(colors.main)
-    .setFooter("Thank You", client.user.displayAvatarURL())
-    .setTimestamp();
-  channel.send(joinembed);
-});
-
-client.on("guildCreate", (guild) => {
-  if (!guild.partial) {
-    const channel = client.channels.cache.get("844621417763962940");
-    if (channel) {
-      const botjoinlogembed = new MessageEmbed()
-        .setTitle("Bot Join")
-        .setColor(colors.main)
-        .addField("Server Name", `**${guild.name}**`, true)
-        .addField("Server ID", `**${guild.id}**`, true)
-        .addField("Server Owner", `**${guild.owner}**`, true)
-        .setDescription(`**This server has ${guild.memberCount} members**`)
-        .setTimestamp();
-      channel.send(botjoinlogembed);
-    }
-  }
-});
-
-client.on("guildDelete", (guild) => {
-  if (!guild.partial) {
-    const channel = client.channels.cache.get("844621417763962940");
-    if (channel) {
-      const botleftlogembed = new MessageEmbed()
-        .setTitle("Bot Left")
-        .setColor(colors.red)
-        .addField("Server Name", `**${guild.name}**`, true)
-        .addField("Server ID", `**${guild.id}**`, true)
-        .addField("Server Owner", `**${guild.owner}**`, true)
-        .setTimestamp();
-      channel.send(botleftlogembed);
-    }
-  }
-});
-
-client.commands = new Discord.Collection();
-const commandFiles = readdirSync(join(__dirname, "commands")).filter((file) =>
-  file.endsWith(".js")
-);
-
-for (const file of commandFiles) {
-  const command = require(join(__dirname, "commands", `${file}`));
-  client.commands.set(command.name, command);
-}
-
-client.on("message", async (message) => {
-  if (message.author.bot) return;
-  if (message.channel.type === "dm") return;
-
-  let prefix = await db.get(`prefix_${message.guild.id}`);
-  if (prefix === null) prefix = default_prefix;
-
-  if (message.content.startsWith(prefix)) {
-    const args = message.content.slice(prefix.length).trim().split(/ +/g);
-
-    const command = args.shift().toLowerCase();
-
-    if (!client.commands.has(command)) return;
-
-    try {
-      client.commands.get(command).run(client, message, args);
-    } catch (error) {
-      console.error(error);
-    }
-  }
+    const channel = client.channels.cache.get(channelId); 
+     
+    if(!channel) return; //If the channel is invalid it returns
+    const embed = new discord.MessageEmbed()
+        .setTitle('I Joined A Guild!')
+        .setDescription(`**Guild Name:** ${guild.name} (${guild.id})\n**Members:** ${guild.memberCount}`)
+        .setTimestamp()
+        .setColor('RANDOM')
+        .setFooter(`I'm in ${client.guilds.cache.size} Guilds Now!`);
+    channel.send(embed);
 });
 
 
-const { GiveawaysManager } = require("discord-giveaways");
-client.giveawaysManager = new GiveawaysManager(client, {
-  storage: "./giveaways.json",
-  updateCountdownEvery: 5000,
-  default: {
-    botsCanWin: false,
-    embedColor: "#5D40F2",
-    reaction: "🎉",
-  },
+client.on('guildDelete', guild =>{
+    const channelId = '1008857674831630458';//add your channel ID
+    const channel = client.channels.cache.get(channelId); //This Gets That Channel
+    
+    if(!channel) return;  //If the channel is invalid it returns
+    const embed = new discord.MessageEmbed()
+        .setTitle('I Left A Guild!')
+        .setDescription(`**Guild Name:** ${guild.name} (${guild.id})\n**Members:** ${guild.memberCount}`)
+        .setTimestamp()
+        .setColor('RED')
+        .setFooter(`I'm in ${client.guilds.cache.size} Guilds Now!`);
+    channel.send(embed);
 });
 
-client.giveawaysManager.on(
-  "giveawayReactionAdded",
-  (giveaway, member, reaction) => {
-    console.log(
-      `${member.user.tag} entered giveaway #${giveaway.messageID} (${reaction.emoji.name})`
-    );
-  }
-);
-
-client.giveawaysManager.on(
-  "giveawayReactionRemoved",
-  (giveaway, member, reaction) => {
-    console.log(
-      `${member.user.tag} unreact to giveaway #${giveaway.messageID} (${reaction.emoji.name})`
-    );
-  }
-);
-
-client.giveawaysManager.on("giveawayEnded", (giveaway, winners) => {
-  console.log(
-    `Giveaway #${giveaway.messageID} ended! Winners: ${winners
-      .map((member) => member.user.username)
-      .join(", ")}`
-  );
-});
-
-client.on("message", async (message) => {
-  if (message.author.bot) return;
-  if (message.channel.type === "dm") return;
-  let prefix = await db.get(`prefix_${message.guild.id}`);
-  if (prefix === null) prefix = default_prefix;
-  let messageArray = message.content.split(" ");
-  let cmd = messageArray[0];
-  let args = messageArray.slice(1);
-
-  db.add(`messages_${message.guild.id}_${message.author.id}`, 1);
-  let messagefetch = db.fetch(
-    `messages_${message.guild.id}_${message.author.id}`
-  );
-
-  let messages;
-  if (messagefetch == 25) messages = 25;
-  else if (messagefetch == 50) messages = 50;
-  else if (messagefetch == 75) messages = 75;
-  else if (messagefetch == 100) messages = 100;
-  else if (messagefetch == 125) messages = 125;
-  else if (messagefetch == 150) messages = 150;
-  else if (messagefetch == 175) messages = 175;
-  else if (messagefetch == 200) messages = 200;
-  else if (messagefetch == 225) messages = 225;
-  else if (messagefetch == 250) messages = 250;
-  else if (messagefetch == 300) messages = 300;
-  else if (messagefetch == 350) messages = 350;
-  else if (messagefetch == 400) messages = 400;
-  else if (messagefetch == 450) messages = 450;
-  else if (messagefetch == 500) messages = 500;
-  else if (messagefetch == 550) messages = 550;
-  else if (messagefetch == 600) messages = 600;
-  else if (messagefetch == 650) messages = 650;
-  else if (messagefetch == 700) messages = 700;
-  else if (messagefetch == 750) messages = 750;
-  else if (messagefetch == 850) messages = 850;
-  else if (messagefetch == 950) messages = 950;
-  else if (messagefetch == 1050) messages = 1050;
-  else if (messagefetch == 1150) messages = 1150;
-  else if (messagefetch == 1250) messages = 1250;
-  else if (messagefetch == 1350) messages = 1350;
-  else if (messagefetch == 1450) messages = 1450;
-  else if (messagefetch == 1550) messages = 1550;
-  else if (messagefetch == 1650) messages = 1650;
-  else if (messagefetch == 1750) messages = 1750;
-  else if (messagefetch == 1950) messages = 1950;
-  else if (messagefetch == 2150) messages = 2150;
-  else if (messagefetch == 2350) messages = 2350;
-  else if (messagefetch == 2550) messages = 2550;
-  else if (messagefetch == 2750) messages = 2750;
-  else if (messagefetch == 2950) messages = 2950;
-  else if (messagefetch == 3150) messages = 3150;
-  else if (messagefetch == 3350) messages = 3350;
-  else if (messagefetch == 3550) messages = 3550;
-  else if (messagefetch == 3750) messages = 3750;
-  else if (messagefetch == 4250) messages = 4250;
-  else if (messagefetch == 4750) messages = 4750;
-  else if (messagefetch == 5250) messages = 5250;
-  else if (messagefetch == 5750) messages = 5750;
-  else if (messagefetch == 6250) messages = 6250;
-  else if (messagefetch == 6750) messages = 6750;
-  else if (messagefetch == 7250) messages = 7250;
-  else if (messagefetch == 7750) messages = 7750;
-  else if (messagefetch == 8250) messages = 8250;
-  else if (messagefetch == 8750) messages = 8750;
-  else if (messagefetch == 9750) messages = 9750;
-  else if (messagefetch == 10750) messages = 10750;
-  else if (messagefetch == 11750) messages = 11750;
-  else if (messagefetch == 12750) messages = 12750;
-  else if (messagefetch == 13750) messages = 13750;
-  else if (messagefetch == 14750) messages = 14750;
-  else if (messagefetch == 15750) messages = 15750;
-  else if (messagefetch == 16750) messages = 16750;
-  else if (messagefetch == 17750) messages = 17750;
-  else if (messagefetch == 18750) messages = 18750;
-  else if (messagefetch == 19850) messages = 19850;
-  else if (messagefetch == 20950) messages = 20950;
-  else if (messagefetch == 22050) messages = 22050;
-  else if (messagefetch == 23150) messages = 23150;
-  else if (messagefetch == 24250) messages = 24250;
-  else if (messagefetch == 25350) messages = 25350;
-  else if (messagefetch == 26450) messages = 26450;
-  else if (messagefetch == 27550) messages = 27550;
-  else if (messagefetch == 28650) messages = 28650;
-  else if (messagefetch == 29750) messages = 29750;
-  else if (messagefetch == 31250) messages = 31250;
-  else if (messagefetch == 32750) messages = 32750;
-  else if (messagefetch == 34250) messages = 34250;
-  else if (messagefetch == 35750) messages = 35750;
-  else if (messagefetch == 37250) messages = 37250;
-  else if (messagefetch == 38750) messages = 38750;
-  else if (messagefetch == 40250) messages = 40250;
-  else if (messagefetch == 41750) messages = 41750;
-  else if (messagefetch == 43250) messages = 43250;
-  else if (messagefetch == 44750) messages = 44750;
-  else if (messagefetch == 46750) messages = 46750;
-  else if (messagefetch == 48750) messages = 48750;
-  else if (messagefetch == 50750) messages = 50750;
-  else if (messagefetch == 52750) messages = 52750;
-  else if (messagefetch == 54750) messages = 54750;
-  else if (messagefetch == 56750) messages = 56750;
-  else if (messagefetch == 58750) messages = 58750;
-  else if (messagefetch == 60750) messages = 60750;
-  else if (messagefetch == 62750) messages = 62750;
-  else if (messagefetch == 64750) messages = 64750;
-  else if (messagefetch == 67750) messages = 67750;
-  else if (messagefetch == 70750) messages = 70750;
-  else if (messagefetch == 73750) messages = 73750;
-  else if (messagefetch == 76750) messages = 76750;
-  else if (messagefetch == 79750) messages = 79750;
-  else if (messagefetch == 82750) messages = 82750;
-  else if (messagefetch == 85750) messages = 85750;
-  else if (messagefetch == 87750) messages = 87750;
-  else if (messagefetch == 90750) messages = 90750;
-  else if (messagefetch == 93750) messages = 93750;
-
-  if (!isNaN(messages)) {
-    db.add(`level_${message.guild.id}_${message.author.id}`, 1);
-    let levelfetch = db.fetch(`level_${message.guild.id}_${message.author.id}`);
-
-    let levelembed = new Discord.MessageEmbed()
-      .setDescription(
-        `**Nice ${message.author}, you just advanced to level ${levelfetch}** <a:CupGif:788458892497125436>`
-      )
-      .setColor(colors.main);
-    let rankChannel = db.fetch(`channel_${message.guild.id}`);
-    if (!rankChannel) return;
-    let rankmsgChannel = message.guild.channels.cache.get(rankChannel);
-    if (!rankmsgChannel) return;
-    rankmsgChannel.send(message.author, levelembed);
-  }
-});
-
-client.on("guildMemberAdd", async (member) => {
-  let chx = db.get(`welchannel_${member.guild.id}`);
-  
-  if(chx === null) {
-    return;
-  }
-  
-  let default_url = `https://cdn.discordapp.com/attachments/468141324906921984/868120864162459649/bg.png`
-  
-  let default_msg = `**Hello ${member.user}, Welcome to ${member.guild.name}, Server 👋**\n**You are our ${member.guild.memberCount}th Member**`
-  
-  let m1 = db.get(`msg_${member.guild.id}`)
-  const msg = m1.replace("{member}", member.user).replace("{guild}", member.guild).replace("{count}", member.guild.memberCount)
-
-  if(msg === null) msg = default_msg
-
-  let url = db.get(`url_${member.guild.id}`)
-  if(url === null) url = default_url
-  
-   let data = await canva.welcome(member, { link: url})
  
-    const attachment = new Discord.MessageAttachment(
-      data,
-      "DevEvilBot-welcome-image.png"
-    );
 
 
-  client.channels.cache.get(chx).send(msg, attachment)
-})
+const smartestchatbot = require('smartestchatbot')
+const scb = new smartestchatbot.Client()
 
-client.on("guildMemberAdd", async (member) => {
-  let chx = db.get(`welcemchannel_${member.guild.id}`);
-  
-  if(chx === null) {
-    return;
+client.on("message", async message => {
+  if (message.channel.name == "abotchat") {
+    if (message.author.bot) return;
+    message.content = message.content.replace(/@(everyone)/gi, "everyone").replace(/@(here)/gi, "here");
+    if (message.content.includes(`@`)) {
+      return message.channel.send(`**:x: Please dont mention anyone**`);
+    }
+    message.channel.startTyping();
+    if (!message.content) return message.channel.send("Please say something.");
+    scb.chat({message: message.content, name: client.user.username, owner:"cwkhan", user: message.author.id, language:"auto"}).then(reply => {
+    message.inlineReply(`${reply}`);
+    })
+    message.channel.stopTyping();
   }
-  
-  let default_msg = `**Hello ${member.user}, Welcome to ${member.guild.name}, Server 👋**\n**You are our ${member.guild.memberCount}th Member**`
-  
-  let m1 = db.get(`emmsg_${member.guild.id}`)
-  const msg = m1.replace("{member}", member.user).replace("{guild}", member.guild).replace("{count}", member.guild.memberCount)
-
-  if(msg === null) msg = default_msg
-
-  const embed = new Discord.MessageEmbed()
-  .setAuthor(`${member.user.tag}`, member.user.displayAvatarURL)
-  .setThumbnail(member.user.displayAvatarURL({ format: 'png', dynamic: true, size: 1024 }))
-  .setDescription(`${msg}`)
-  .setColor(colors.main)
-  .setTimestamp()
-  .setFooter(`${client.user.username}`, client.user.displayAvatarURL({ format: 'png', dynamic: true, size: 1024 }))
+});
 
 
-  client.channels.cache.get(chx).send(embed)
-})
-
-client.on("guildMemberAdd", async (member) => {
-  let chx = db.get(`wlctextch_${member.guild.id}`);
-  
-  if(chx === null) {
-    return;
-  }
-  
-  let default_msg = `**Hello ${member.user}, Welcome to ${member.guild.name}, Server 👋**\n**You are our ${member.guild.memberCount}th Member**`
-  
-  let m1 = db.get(`wlctextmsg_${member.guild.id}`)
-  const msg = m1.replace("{member}", member.user).replace("{guild}", member.guild).replace("{count}", member.guild.memberCount)
-
-  if(msg === null) msg = default_msg
-
-  client.channels.cache.get(chx).send(msg)
-})
-
-client.on("guildMemberRemove", async (member) => {
-  let chx = db.get(`leftchannel_${member.guild.id}`);
-  
-  if(chx === null) {
-    return;
-  }
-  
-  let default_msg = `**${member.user}, Left the server**`
-  
-  let m1 = db.get(`leftmsg_${member.guild.id}`)
-  const msg = m1.replace("{member}", member.user).replace("{guild}", member.guild).replace("{count}", member.guild.memberCount)
-
-  if(msg === null) msg = default_msg
-
-  const embed = new Discord.MessageEmbed()
-  .setAuthor(`${member.user.tag}`, member.user.displayAvatarURL)
-  .setThumbnail(member.user.displayAvatarURL({ format: 'png', dynamic: true, size: 1024 }))
-  .setDescription(`${msg}`)
-  .setColor(colors.main)
-  .setTimestamp()
-  .setFooter(`${client.user.username}`, client.user.displayAvatarURL({ format: 'png', dynamic: true, size: 1024 }))
+require("./ExtendedMessage");
 
 
-  client.channels.cache.get(chx).send(embed)
-})
+    allowedMentions: {
+        // set repliedUser value to `false` to turn off the mention by default
+        repliedUser: true
+    }
+    
 
-client.on("guildMemberRemove", async (member) => {
-  let chx = db.get(`lefttextch_${member.guild.id}`);
-  
-  if(chx === null) {
-    return;
-  }
-  
-  let default_msg = `**Hello ${member.user}, Welcome to ${member.guild.name}, Server 👋**\n**You are our ${member.guild.memberCount}th Member**`
-  
-  let m1 = db.get(`lefttextmsg_${member.guild.id}`)
-  const msg = m1.replace("{member}", member.user).replace("{guild}", member.guild).replace("{count}", member.guild.memberCount)
+    let firstbutton = new disbut.MessageButton()
+  .setLabel("𝕊𝕥𝕖𝕡 𝟙")
+  .setStyle("blurple")
+  .setID("firstbutton")
+let secondbutton = new disbut.MessageButton()
+  .setLabel("𝕊𝕥𝕖𝕡 𝟚")
+  .setStyle("blurple")
+  .setID("secondbutton")
+let thirdbutton = new disbut.MessageButton()
+  .setLabel("𝕊𝕥𝕖𝕡 𝟛")
+  .setStyle("blurple")
+  .setID("thirdbutton")
+let row1 = new disbut.MessageActionRow()
+  .addComponent(firstbutton)
+  .addComponent(secondbutton)
+  .addComponent(thirdbutton)
+const step1 = new MessageEmbed()
+  .setColor("cccfff")
+  .setTitle("<a:YellowArrow:870193892492980236> How to Use Uptimer!")
+  .addField(
+    "<:857122481088495629:873454677231034368> Get the link", "Our first step is to get the webpage link. You can find the code in the bottom or side of you repl.it(see screenshot below)! If you do not have this link, copy paste this code at the top of your `index.js` and run it again.\n ```https://pastebin.com/HJGhAUZf```"
+  )
+  .setImage("https://media.discordapp.net/attachments/870077234780725281/873324807444365413/Screen_Shot_2021-08-06_at_2.57.52_PM.png?width=1017&height=534")
+const step3 = new MessageEmbed()
+  .setColor("cccfff")
+  .setTitle("<a:YellowArrow:870193892492980236> How to Use Uptimer!")
+  .addField(
+    "<:5286_three_emj_png:873453086981636127> Other Commands", "Now that we have added your project, you can use other command such as `projects` `remove` `stats` and `total`. Below Is an image of the remove command!  "
+  )
+  .setImage("https://media.discordapp.net/attachments/870077234780725281/873663248510107688/Screen_Shot_2021-08-07_at_1.25.22_PM.png")
+const step2 = new MessageEmbed()
+  .setColor("cccfff")
+  .setTitle("<a:YellowArrow:870193892492980236> How to Use Uptimer!")
+  .addField(
+    "<:4751_two_emj_png:873364919259627551> Run the command", "Our next step is to runn the command. The syntax of this command is `*add <repl_url>`. If done correcty the bot should give embed saying: ```:white_check_mark: Added Succesfully!``` See Screenshot Below For More details."
+  )
+  .setImage("https://media.discordapp.net/attachments/870077234780725281/873366580522782820/Screen_Shot_2021-08-06_at_5.46.41_PM.png");
+// Button Handler
+client.on("clickButton", async (button) => {
+  if (button.id === "firstbutton") {
+    button.message.edit({
+      embed: step1,
+      component: row1,
+    });
+  } else if (button.id === "secondbutton") {
 
-  if(msg === null) msg = default_msg
+    button.message.edit({
+      embed: step2,
+      component: row1,
+    });
+  } else if (button.id === "thirdbutton") {
+    button.message.edit({
+      embed: step3,
+      component: row1,
+    });
 
-  client.channels.cache.get(chx).send(msg)
-})
-
-client.on('messageReactionAdd', async (reaction, user) => {
-  if(user.partial) await user.fetch();
-  if(reaction.partial) await reaction.fetch();
-  if(reaction.message.partial) await reaction.message.fetch();
-  if(user.bot) return;
-   let emote = await db.get(`emoteid_${reaction.message.guild.id}_${reaction.emoji.id}`)
-  if(!emote) return;
-  let messageid = await db.get(`message_${reaction.message.guild.id}_${reaction.emoji.id}`)
-  if(!messageid) return;
-  let role = await db.get(`role_${reaction.message.guild.id}_${reaction.emoji.id}`)
-  if(!role) return;
-
-  if(reaction.message.id == messageid && reaction.emoji.id == `${emote}`) {
-  reaction.message.guild.members.fetch(user).then(member => {
-    let embed = new Discord.MessageEmbed()
-    .setAuthor(user.username , user.displayAvatarURL())
-    .setDescription(`<a:no:784463793366761532> **It's Looks You Already Have ${reaction.message.guild.roles.cache.get(role).name}** `)
-    .setFooter(`${client.user.username}`, client.user.displayAvatarURL({ format: 'png', dynamic: true, size: 1024 }))
-    .setColor(colors.main)
-    if(member.roles.cache.has(role)) return user.send(embed)
-    let sucsses = new Discord.MessageEmbed()
-    .setAuthor(user.username, user.displayAvatarURL())
-    .setDescription(`<a:yes:784463701305458708> **${reaction.message.guild.roles.cache.get(role).name}** Has Been added to you on ${reaction.message.guild.name}`)
-    .setFooter(`${client.user.username}`, client.user.displayAvatarURL({ format: 'png', dynamic: true, size: 1024 }))
-    .setColor(colors.main)
-
-    member.roles.add(role) 
-    return user.send(sucsses)
-  })
   }
 })
+    
 
-client.on('messageReactionAdd', async (reaction, user) => {
-if(user.partial) await user.fetch();
-if(reaction.partial) await reaction.fetch();
-if(reaction.message.partial) await reaction.message.fetch();
-if(user.bot) return;
- let emote = await db.get(`emoteid_${reaction.message.guild.id}_${reaction.emoji.name}`)
-if(!emote) return;
-let messageid = await db.get(`message_${reaction.message.guild.id}_${reaction.emoji.name}`)
-if(!messageid) return;
-let role = await db.get(`role_${reaction.message.guild.id}_${reaction.emoji.name}`)
-if(!role) return;
-
-if(reaction.message.id == messageid && reaction.emoji.name == `${emote}`) {
-reaction.message.guild.members.fetch(user).then(member => {
-  let embed = new Discord.MessageEmbed()
-  .setAuthor(user.username , user.displayAvatarURL())
-  .setDescription(`<a:no:784463793366761532> **It's Looks You Already Have ${reaction.message.guild.roles.cache.get(role).name}** `)
-  .setFooter(reaction.message.guild.name , reaction.message.guild.iconURL())
-  .setTimestamp()
-  if(member.roles.cache.has(role)) return user.send(embed)
-  let sucsses = new Discord.MessageEmbed()
-  .setAuthor(user.username, user.displayAvatarURL())
-  .setDescription(`<a:yes:784463701305458708> **${reaction.message.guild.roles.cache.get(role).name}** Has Been added to you on ${reaction.message.guild.name}`)
-  .setFooter(`${client.user.username}`, client.user.displayAvatarURL({ format: 'png', dynamic: true, size: 1024 }))
-  .setColor(colors.main)
-
-  member.roles.add(role) 
-  return user.send(sucsses)
-})
-}
-})
-
-
-client.on('messageReactionRemove', async (reaction, user) => {
-console.log(user.username)
-if(user.partial) await user.fetch();
-if(reaction.partial) await reaction.fetch();
-if(reaction.message.partial) await reaction.message.fetch();
-if(user.bot) return;
-let emote = await db.get(`emoteid_${reaction.message.guild.id}_${reaction.emoji.id}`)
-if(!emote) return;
-let messageid = await db.get(`message_${reaction.message.guild.id}_${reaction.emoji.id}`)
-if(!messageid) return;
-let role = await db.get(`role_${reaction.message.guild.id}_${reaction.emoji.id}`)
-if(!role) return;
- if(reaction.message.id == messageid && reaction.emoji.id == `${emote}`) {
-  reaction.message.guild.members.fetch(user).then(member => {
-
- let embed = new Discord.MessageEmbed()
- .setAuthor(user.username , user.displayAvatarURL())
- .setDescription(`<a:yes:784463701305458708> **${reaction.message.guild.roles.cache.get(role).name}** Role Removed From You`)
- .setFooter(`${client.user.username}`, client.user.displayAvatarURL({ format: 'png', dynamic: true, size: 1024 }))
- .setColor(colors.main)
- user.send(embed)
- member.roles.remove(role)
-  
-})
-}
-})
-
-client.on('messageReactionRemove', async (reaction, user) => {
-console.log(user.username)
-if(user.partial) await user.fetch();
-if(reaction.partial) await reaction.fetch();
-if(reaction.message.partial) await reaction.message.fetch();
-if(user.bot) return;
-let emote = await db.get(`emoteid_${reaction.message.guild.id}_${reaction.emoji.name}`)
-if(!emote) return;
-let messageid = await db.get(`message_${reaction.message.guild.id}_${reaction.emoji.name}`)
-if(!messageid) return;
-let role = await db.get(`role_${reaction.message.guild.id}_${reaction.emoji.name}`)
-if(!role) return;
- if(reaction.message.id == messageid && reaction.emoji.name == `${emote}`) {
-  reaction.message.guild.members.fetch(user).then(member => {
-  
- let embed = new Discord.MessageEmbed()
- .setAuthor(user.username , user.displayAvatarURL())
- .setDescription(`<a:yes:784463701305458708> **${reaction.message.guild.roles.cache.get(role).name}** Role Removed From You`)
- .setFooter(`${client.user.username}`, client.user.displayAvatarURL({ format: 'png', dynamic: true, size: 1024 }))
- .setColor(colors.main)
- user.send(embed)
- member.roles.remove(role)
-  
-})
-}
-})
-
-client.login(token);
+client.login(process.env.TOKEN);

@@ -1,4 +1,33 @@
 {
-	"token": "BOT_TOKEN",
-	"default_prefix": "BOT_PREFIX"
+  
+  "default_prefix": "-",
+    "owners": ["1011479291382472724"],
+
+    
+
+
+   "guildid": "997982991483666462",
+   "emoji": {
+        "play": "▶️",
+        "stop": "⏹️",
+        "queue": "📄",
+        "success": "☑️",
+        "repeat": "🔁",
+        "error": "❌",
+ "YOUTUBE_API_KEY": "AIzaSyBh3IuBJGuNTYp70xeMSUpOBMmW2S5gFSA",
+ "premium": "1011241158992744519",
+ "PREFIX": "-",
+ "mongodb": "mongodb+srv://arsama705:siktirarsam7841@cluster0.og16vas.mongodb.net/?retryWrites=true&w=majority",
+ "database": "",
+ "BOT_ID": "1008736770457862335",
+ "embedcolor": "BLUE",
+ "COOLDOWN": "3",
+ "EMOJI_ARROW":"🔄",
+ "WELCOME_CHANNEL": "1008853022404784168",
+    "QUEUE_LIMIT": 2,
+    "owners": "1011479291382472724",
+    "AME_API": "36d73cb74451722a36fe5321526fa29649bdc850444fea8269e6f21276ece44925ae934dd478a803886f53420dfe3e3498f7dc3d0380e278a60d2f50cdc92e72",
+    "COLOR": "00FFFF",
+    "mongourl":"mongodb+srv://arsama705:siktirarsam7841@cluster0.og16vas.mongodb.net/?retryWrites=true&w=majority"
+}
 }
